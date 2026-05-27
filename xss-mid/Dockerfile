@@ -1,4 +1,4 @@
-FROM kasmweb/kali-rolling:1.16.0
+FROM kasmweb/core-kali-rolling:1.18.0
 USER root
 
 COPY entrypoint.sh /entrypoint.sh
