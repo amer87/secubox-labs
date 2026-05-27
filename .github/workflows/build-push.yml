@@ -1,0 +1,48 @@
+name: Build and Push Labs to ACR
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  discover-labs:
+    runs-on: ubuntu-latest
+    outputs:
+      labs: ${{ steps.list.outputs.labs }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Discover lab Dockerfiles
+        id: list
+        run: |
+          labs=$(find . -maxdepth 2 -name Dockerfile \
+            | xargs -I{} dirname {} \
+            | xargs -I{} basename {} \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "labs=$labs" >> "$GITHUB_OUTPUT"
+
+  build-labs:
+    needs: discover-labs
+    if: needs.discover-labs.outputs.labs != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lab: ${{ fromJson(needs.discover-labs.outputs.labs) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: acrsecubox.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push ${{ matrix.lab }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.lab }}
+          push: true
+          tags: acrsecubox.azurecr.io/lab/${{ matrix.lab }}:latest

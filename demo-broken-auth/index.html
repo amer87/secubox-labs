@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Broken Authentication — Secubox Lab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    header .badge {
+      background: #22c55e22;
+      border: 1px solid #22c55e55;
+      color: #22c55e;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 860px;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1rem;
+    }
+
+    .objective {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #cbd5e1;
+    }
+
+    .stage-label {
+      display: inline-block;
+      background: #6366f122;
+      border: 1px solid #6366f155;
+      color: #a5b4fc;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+    }
+
+    .vuln-app {
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .vuln-app label {
+      display: block;
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 0.4rem;
+      margin-top: 0.75rem;
+    }
+
+    .vuln-app label:first-of-type { margin-top: 0; }
+
+    .vuln-app .input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .vuln-app input {
+      flex: 1;
+      background: #1e2130;
+      border: 1px solid #3d4468;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      width: 100%;
+    }
+
+    .vuln-app input:focus { border-color: #6366f1; }
+
+    .vuln-app button {
+      background: #6366f1;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.5rem 1.25rem;
+      margin-top: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .vuln-app button:hover { background: #4f46e5; }
+
+    .request-display {
+      margin-top: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: #f59e0b;
+      background: #0a0c12;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      word-break: break-all;
+      min-height: 2.5rem;
+    }
+
+    #decoded-display {
+      margin-top: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: #38bdf8;
+      background: #0a0c12;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      word-break: break-all;
+    }
+
+    .result {
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+      min-height: 1.5rem;
+    }
+
+    .result-row {
+      background: #16213e;
+      border-left: 3px solid #6366f1;
+      padding: 0.4rem 0.75rem;
+      border-radius: 0 4px 4px 0;
+      margin-top: 0.4rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+    }
+
+    .result-row.success {
+      border-left-color: #22c55e;
+      background: #14261a;
+    }
+
+    .result-row.error {
+      border-left-color: #ef4444;
+      background: #2a1414;
+    }
+
+    .token-display {
+      background: #1e2130;
+      border: 1px solid #3d4468;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      color: #a5b4fc;
+      word-break: break-all;
+    }
+
+    .flag-box {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: #14261a;
+      border: 1px solid #22c55e55;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+    }
+
+    .flag-box .icon { font-size: 1.5rem; }
+
+    .flag-box .label {
+      font-size: 0.75rem;
+      color: #4ade80;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .flag-box .value {
+      font-family: 'Courier New', monospace;
+      font-size: 1rem;
+      color: #86efac;
+      margin-top: 0.15rem;
+      word-break: break-all;
+    }
+
+    .hint {
+      font-size: 0.82rem;
+      color: #475569;
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+
+    #flag-card { display: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge">Active</div>
+    <h1>Secubox — Broken Authentication</h1>
+  </header>
+
+  <div class="card">
+    <h2>Objective</h2>
+    <p class="objective">
+      This application exposes two critical authentication weaknesses: weak default credentials
+      with no brute-force protection, and unsigned session tokens that are trivially forgeable.
+      Exploit either vulnerability to gain admin access and retrieve the flag.
+    </p>
+  </div>
+
+  <!-- Stage 1: Weak Credentials -->
+  <div class="card">
+    <h2>Stage 1 — Weak Credentials</h2>
+    <div class="stage-label">No Rate Limiting · No Account Lockout</div>
+    <p class="objective">
+      The login endpoint accepts unlimited attempts. Several accounts exist with common passwords.
+      Once authenticated, the server issues a session token.
+    </p>
+    <div class="vuln-app">
+      <label>Username</label>
+      <input id="login-username" type="text" placeholder="e.g. alice" />
+      <label>Password</label>
+      <input id="login-password" type="password" placeholder="e.g. password" />
+      <button onclick="doLogin()">Login</button>
+      <div class="request-display" id="login-request">POST /api/login  { "username": "...", "password": "..." }</div>
+      <div class="result" id="login-result"></div>
+    </div>
+    <p class="hint">Hint: Try common username/password combinations — the application has no lockout policy.</p>
+  </div>
+
+  <!-- Stage 2: Session Forgery -->
+  <div class="card">
+    <h2>Stage 2 — Session Token Forgery</h2>
+    <div class="stage-label">Predictable · Unsigned · Base64-encoded</div>
+    <p class="objective">
+      Session tokens are Base64-encoded strings. Decode one to reveal its structure,
+      then forge a token with elevated privileges. The server trusts whatever role is encoded inside.
+    </p>
+    <div class="vuln-app">
+      <label>Session Token</label>
+      <div class="input-row">
+        <input id="token-input" type="text" placeholder="Paste a Base64 session token here" />
+        <button onclick="submitToken()">Submit</button>
+      </div>
+      <div id="decoded-display">decoded: (enter a token above)</div>
+      <div class="result" id="token-result"></div>
+    </div>
+    <p class="hint">Hint: <code>btoa("role:username")</code> in the browser console is all you need to forge a token.</p>
+  </div>
+
+  <!-- Flag — revealed when admin access is confirmed -->
+  <div class="card" id="flag-card">
+    <h2>Your Flag</h2>
+    <div class="flag-box">
+      <div class="icon">🚩</div>
+      <div>
+        <div class="label">Admin access granted — Submit this flag to complete the lab</div>
+        <div class="value">__CTF_FLAG__</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const USERS = [
+      { username: "alice",  password: "password",  role: "user"  },
+      { username: "bob",    password: "letmein",   role: "user"  },
+      { username: "admin",  password: "admin123",  role: "admin" },
+    ];
+
+    function makeToken(role, username) {
+      return btoa(role + ":" + username);
+    }
+
+    function doLogin() {
+      const username = document.getElementById("login-username").value.trim();
+      const password = document.getElementById("login-password").value;
+
+      document.getElementById("login-request").textContent =
+        `POST /api/login  { "username": "${username}", "password": "***" }`;
+
+      const resultEl = document.getElementById("login-result");
+      resultEl.innerHTML = "";
+
+      const user = USERS.find(u => u.username === username && u.password === password);
+
+      if (user) {
+        const token = makeToken(user.role, user.username);
+
+        const row = document.createElement("div");
+        row.className = "result-row success";
+        row.innerHTML = `200 OK &nbsp;·&nbsp; Welcome, ${user.username} (${user.role})<br>` +
+          `<span style="color:#94a3b8; font-size:0.8rem">Session-Token: </span>${token}`;
+        resultEl.appendChild(row);
+
+        document.getElementById("token-input").value = token;
+
+        if (user.role === "admin") {
+          revealFlag("Logged in directly with admin credentials.");
+        } else {
+          const hint = document.createElement("div");
+          hint.style.cssText = "margin-top:0.5rem; font-size:0.82rem; color:#475569; font-style:italic";
+          hint.textContent = "You are authenticated as a regular user. Admin access is required for the flag.";
+          resultEl.appendChild(hint);
+        }
+      } else {
+        const row = document.createElement("div");
+        row.className = "result-row error";
+        row.textContent = "401 Unauthorized · Invalid username or password.";
+        resultEl.appendChild(row);
+      }
+    }
+
+    function submitToken() {
+      const raw = document.getElementById("token-input").value.trim();
+      const decodedEl = document.getElementById("decoded-display");
+      const resultEl = document.getElementById("token-result");
+      resultEl.innerHTML = "";
+
+      if (!raw) {
+        decodedEl.textContent = "decoded: (no token provided)";
+        return;
+      }
+
+      let decoded;
+      try {
+        decoded = atob(raw);
+      } catch {
+        decodedEl.textContent = "decoded: (invalid Base64)";
+        const row = document.createElement("div");
+        row.className = "result-row error";
+        row.textContent = "400 Bad Request · Token is not valid Base64.";
+        resultEl.appendChild(row);
+        return;
+      }
+
+      decodedEl.textContent = `decoded: "${decoded}"`;
+
+      const sep = decoded.indexOf(":");
+      if (sep === -1) {
+        const row = document.createElement("div");
+        row.className = "result-row error";
+        row.textContent = "400 Bad Request · Unrecognised token format.";
+        resultEl.appendChild(row);
+        return;
+      }
+
+      const role     = decoded.substring(0, sep);
+      const username = decoded.substring(sep + 1);
+
+      if (role === "admin") {
+        const row = document.createElement("div");
+        row.className = "result-row success";
+        row.textContent = `200 OK · Session accepted — role=${role}, username=${username}`;
+        resultEl.appendChild(row);
+        revealFlag("Admin session token accepted.");
+      } else {
+        const row = document.createElement("div");
+        row.className = "result-row";
+        row.textContent = `200 OK · Session accepted — role=${role}, username=${username}. Admin access required.`;
+        resultEl.appendChild(row);
+      }
+    }
+
+    function revealFlag(reason) {
+      const card = document.getElementById("flag-card");
+      if (card.style.display !== "none") return;
+      card.style.display = "block";
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  </script>
+
+</body>
+</html>

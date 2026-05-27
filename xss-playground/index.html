@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XSS Playground — Secubox Lab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    header .badge {
+      background: #f59e0b22;
+      border: 1px solid #f59e0b55;
+      color: #f59e0b;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+    }
+
+    header h1 { font-size: 1.1rem; font-weight: 600; color: #f8fafc; }
+
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+
+    .challenge-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .challenge-num {
+      width: 2rem; height: 2rem;
+      background: #f59e0b22;
+      border: 1px solid #f59e0b44;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-weight: 700; color: #f59e0b;
+      flex-shrink: 0;
+    }
+
+    .challenge-title { font-size: 1rem; font-weight: 600; color: #f1f5f9; }
+    .challenge-type {
+      margin-left: auto;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 0.2rem 0.6rem; border-radius: 999px;
+    }
+    .type-reflected { background: #ef444422; border: 1px solid #ef444455; color: #f87171; }
+    .type-stored    { background: #a855f722; border: 1px solid #a855f755; color: #c084fc; }
+    .type-dom       { background: #06b6d422; border: 1px solid #06b6d455; color: #22d3ee; }
+
+    .objective {
+      font-size: 0.9rem; line-height: 1.7; color: #cbd5e1;
+      margin-bottom: 1rem;
+    }
+
+    .vuln-app {
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+
+    .vuln-app label {
+      display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 0.4rem;
+    }
+
+    .input-row { display: flex; gap: 0.5rem; }
+
+    input[type="text"], textarea {
+      flex: 1;
+      background: #1e2130;
+      border: 1px solid #3d4468;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      width: 100%;
+    }
+
+    textarea { resize: vertical; min-height: 3.5rem; }
+    input[type="text"]:focus, textarea:focus { border-color: #f59e0b; }
+
+    button {
+      background: #f59e0b;
+      border: none; border-radius: 6px;
+      color: #0f1117; cursor: pointer;
+      font-size: 0.85rem; font-weight: 700;
+      padding: 0.5rem 1.25rem;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #d97706; }
+    button.secondary {
+      background: transparent;
+      border: 1px solid #3d4468;
+      color: #94a3b8;
+    }
+    button.secondary:hover { border-color: #94a3b8; color: #e2e8f0; }
+
+    .output {
+      margin-top: 1rem;
+      font-size: 0.88rem;
+      min-height: 1.5rem;
+    }
+
+    .output-label {
+      font-size: 0.75rem; color: #475569; text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 0.4rem;
+    }
+
+    .output-box {
+      background: #0a0c12;
+      border: 1px solid #2d3148;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      word-break: break-all;
+      min-height: 2.5rem;
+    }
+
+    .comment-item {
+      border-bottom: 1px solid #1e2130;
+      padding: 0.6rem 0;
+    }
+    .comment-item:last-child { border-bottom: none; }
+    .comment-author { font-size: 0.75rem; color: #64748b; margin-bottom: 0.2rem; }
+    .comment-body { font-size: 0.9rem; color: #e2e8f0; }
+
+    .hint {
+      font-size: 0.8rem; color: #475569;
+      margin-top: 0.75rem; font-style: italic;
+    }
+
+    .hint code {
+      background: #0a0c12; border-radius: 4px;
+      padding: 0.1rem 0.35rem; font-family: 'Courier New', monospace;
+      color: #94a3b8; font-style: normal;
+    }
+
+    .flag-box {
+      display: flex; align-items: center; gap: 1rem;
+      background: #14261a;
+      border: 1px solid #22c55e55;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+    }
+
+    .flag-box .icon { font-size: 1.5rem; }
+    .flag-box .label {
+      font-size: 0.75rem; color: #4ade80;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .flag-box .value {
+      font-family: 'Courier New', monospace;
+      font-size: 1rem; color: #86efac;
+      margin-top: 0.2rem; word-break: break-all;
+    }
+
+    .tab-bar {
+      display: flex; gap: 0.5rem; margin-bottom: 1rem;
+    }
+    .tab {
+      padding: 0.35rem 0.9rem; border-radius: 6px;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      border: 1px solid #2d3148; background: transparent; color: #64748b;
+    }
+    .tab.active {
+      background: #1e2130; border-color: #f59e0b55; color: #f59e0b;
+    }
+
+    #dom-source {
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem; color: #f59e0b;
+      background: #0a0c12;
+      border-radius: 6px; padding: 0.6rem 1rem;
+      margin-bottom: 0.75rem; word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge">Active</div>
+    <h1>Secubox — XSS Playground</h1>
+  </header>
+
+  <!-- Objective -->
+  <div class="card">
+    <h2>Objective</h2>
+    <p class="objective">
+      This lab exposes three classic cross-site scripting (XSS) vulnerabilities:
+      <strong>reflected</strong>, <strong>stored</strong>, and <strong>DOM-based</strong>.
+      Each challenge accepts unsanitized user input and renders it directly into the page.
+      Craft an XSS payload that executes JavaScript and retrieves the hidden flag from the
+      page's script context. The flag variable is named <code style="background:#0a0c12;border-radius:4px;padding:.1rem .35rem;font-family:'Courier New',monospace;color:#94a3b8">CTF_FLAG</code>.
+    </p>
+  </div>
+
+  <!-- Challenge 1: Reflected XSS -->
+  <div class="card">
+    <div class="challenge-header">
+      <div class="challenge-num">1</div>
+      <div class="challenge-title">Search</div>
+      <span class="challenge-type type-reflected">Reflected</span>
+    </div>
+    <p class="objective">
+      The search query is taken from the URL parameter <code style="background:#0a0c12;border-radius:4px;padding:.1rem .35rem;font-family:'Courier New',monospace;color:#94a3b8">?q=</code> and reflected
+      directly into the results area without sanitization.
+    </p>
+    <div class="vuln-app">
+      <label>Search term</label>
+      <div class="input-row">
+        <input type="text" id="search-input" placeholder='e.g.  <img src=x onerror="alert(CTF_FLAG)">' />
+        <button onclick="doSearch()">Search</button>
+      </div>
+      <div class="output">
+        <div class="output-label">Results for: <span id="search-query-display" style="color:#f59e0b;font-family:'Courier New',monospace"></span></div>
+        <div class="output-box" id="search-results">Enter a search term above.</div>
+      </div>
+    </div>
+    <p class="hint">
+      Hint: inject <code>&lt;img src=x onerror="alert(CTF_FLAG)"&gt;</code> — the results area uses <code>innerHTML</code>.
+    </p>
+  </div>
+
+  <!-- Challenge 2: Stored XSS -->
+  <div class="card">
+    <div class="challenge-header">
+      <div class="challenge-num">2</div>
+      <div class="challenge-title">Guestbook</div>
+      <span class="challenge-type type-stored">Stored</span>
+    </div>
+    <p class="objective">
+      Posts are saved in the browser's <code style="background:#0a0c12;border-radius:4px;padding:.1rem .35rem;font-family:'Courier New',monospace;color:#94a3b8">localStorage</code> and rendered back via
+      <code style="background:#0a0c12;border-radius:4px;padding:.1rem .35rem;font-family:'Courier New',monospace;color:#94a3b8">innerHTML</code> each time the page loads.
+      A malicious entry will execute for every visitor who views the guestbook.
+    </p>
+    <div class="vuln-app">
+      <div class="tab-bar">
+        <button class="tab active" onclick="showTab('gb-write')">Write</button>
+        <button class="tab" onclick="showTab('gb-read')">View posts</button>
+      </div>
+
+      <div id="gb-write">
+        <label>Name</label>
+        <input type="text" id="gb-name" placeholder="Your name" style="margin-bottom:.5rem" />
+        <label>Message</label>
+        <textarea id="gb-message" placeholder='e.g.  <img src=x onerror="alert(CTF_FLAG)">'></textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem">
+          <button onclick="addComment()">Post</button>
+          <button class="secondary" onclick="clearComments()">Clear all</button>
+        </div>
+      </div>
+
+      <div id="gb-read" style="display:none">
+        <div class="output-box" id="comment-list" style="min-height:5rem"></div>
+      </div>
+    </div>
+    <p class="hint">
+      Hint: post <code>&lt;img src=x onerror="alert(CTF_FLAG)"&gt;</code> as your message,
+      then switch to <em>View posts</em> — the stored entry will execute on render.
+    </p>
+  </div>
+
+  <!-- Challenge 3: DOM XSS -->
+  <div class="card">
+    <div class="challenge-header">
+      <div class="challenge-num">3</div>
+      <div class="challenge-title">Profile Viewer</div>
+      <span class="challenge-type type-dom">DOM-based</span>
+    </div>
+    <p class="objective">
+      This page reads the URL hash (<code style="background:#0a0c12;border-radius:4px;padding:.1rem .35rem;font-family:'Courier New',monospace;color:#94a3b8">window.location.hash</code>) and injects it
+      into the DOM using <code style="background:#0a0c12;border-radius:4px;padding:.1rem .35rem;font-family:'Courier New',monospace;color:#94a3b8">innerHTML</code> to display a username.
+      No server involved — the vulnerability lives entirely in client-side JavaScript.
+    </p>
+    <div class="vuln-app">
+      <div id="dom-source"></div>
+      <label>Simulated page URL</label>
+      <div class="input-row">
+        <input type="text" id="dom-input" placeholder='e.g.  <img src=x onerror="alert(CTF_FLAG)">' />
+        <button onclick="doDomXss()">Load profile</button>
+      </div>
+      <div class="output">
+        <div class="output-label">Rendered output</div>
+        <div class="output-box" id="dom-output">Enter a username above.</div>
+      </div>
+    </div>
+    <p class="hint">
+      Hint: the app does <code>element.innerHTML = decodeURIComponent(location.hash.slice(1))</code>.
+      Paste a payload in the field above to simulate a crafted hash value.
+    </p>
+  </div>
+
+  <!-- Flag -->
+  <div class="card">
+    <h2>Flag</h2>
+    <div class="flag-box">
+      <div class="icon">🚩</div>
+      <div>
+        <div class="label">Appears in alert() when your XSS executes — then submit below</div>
+        <div class="value" id="flag-display" style="filter:blur(6px);user-select:none;transition:filter .4s">
+          __CTF_FLAG__
+        </div>
+      </div>
+      <button onclick="revealFlag()" style="margin-left:auto;background:#1e2130;border:1px solid #2d3148;color:#94a3b8;font-size:0.75rem">
+        Reveal
+      </button>
+    </div>
+    <p class="hint" style="margin-top:.75rem">
+      The <code>CTF_FLAG</code> JS variable holds the flag value — your XSS payload should
+      call <code>alert(CTF_FLAG)</code> to prove execution and read it.
+    </p>
+  </div>
+
+  <script>
+    // ── Flag ────────────────────────────────────────────────────────────────
+    const CTF_FLAG = "__CTF_FLAG__";
+
+    function revealFlag() {
+      document.getElementById('flag-display').style.filter = 'none';
+      document.getElementById('flag-display').style.userSelect = 'text';
+    }
+
+    // ── Challenge 1: Reflected XSS ──────────────────────────────────────────
+    function doSearch() {
+      const q = document.getElementById('search-input').value;
+      document.getElementById('search-query-display').textContent = q;
+      // Intentionally unsafe — reflects raw input into innerHTML
+      document.getElementById('search-results').innerHTML =
+        q ? `Showing results for: <strong>${q}</strong>` : 'Enter a search term above.';
+    }
+
+    // Pre-fill from URL param ?q= on load (classic reflected XSS vector)
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('q');
+      if (q) {
+        document.getElementById('search-input').value = q;
+        doSearch();
+      }
+    })();
+
+    // ── Challenge 2: Stored XSS ─────────────────────────────────────────────
+    const STORAGE_KEY = 'xss_lab_comments';
+
+    function getComments() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+      catch { return []; }
+    }
+
+    function saveComments(comments) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+    }
+
+    function addComment() {
+      const name = document.getElementById('gb-name').value.trim() || 'Anonymous';
+      const body = document.getElementById('gb-message').value;
+      if (!body) return;
+      const comments = getComments();
+      comments.push({ name, body, ts: new Date().toLocaleTimeString() });
+      saveComments(comments);
+      document.getElementById('gb-name').value = '';
+      document.getElementById('gb-message').value = '';
+      alert('Posted! Switch to "View posts" to see your entry rendered.');
+    }
+
+    function clearComments() {
+      localStorage.removeItem(STORAGE_KEY);
+      renderComments();
+    }
+
+    function renderComments() {
+      const list = document.getElementById('comment-list');
+      const comments = getComments();
+      if (comments.length === 0) {
+        list.textContent = 'No posts yet.';
+        return;
+      }
+      list.innerHTML = comments.map(c =>
+        // Intentionally unsafe — renders stored HTML without sanitization
+        `<div class="comment-item">
+           <div class="comment-author">${c.name} · ${c.ts}</div>
+           <div class="comment-body">${c.body}</div>
+         </div>`
+      ).join('');
+    }
+
+    function showTab(id) {
+      document.getElementById('gb-write').style.display = id === 'gb-write' ? '' : 'none';
+      document.getElementById('gb-read').style.display  = id === 'gb-read'  ? '' : 'none';
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0) === (id === 'gb-write'));
+      });
+      if (id === 'gb-read') renderComments();
+    }
+
+    // ── Challenge 3: DOM XSS ────────────────────────────────────────────────
+    function doDomXss() {
+      const payload = document.getElementById('dom-input').value;
+      document.getElementById('dom-source').textContent =
+        `location.hash → "${payload}"`;
+      // Intentionally unsafe — simulates location.hash injected into innerHTML
+      document.getElementById('dom-output').innerHTML =
+        payload ? `Welcome, ${payload}!` : 'Enter a username above.';
+    }
+
+    // Also react to actual hash changes (real DOM XSS vector)
+    function handleHash() {
+      const hash = decodeURIComponent(window.location.hash.slice(1));
+      if (hash) {
+        document.getElementById('dom-input').value = hash;
+        doDomXss();
+      }
+    }
+    window.addEventListener('hashchange', handleHash);
+    handleHash();
+  </script>
+
+</body>
+</html>
